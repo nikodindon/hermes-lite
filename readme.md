@@ -1,5 +1,8 @@
 # Hermes Lite – Multi‑Agent AI Router (OpenRouter Edition)
 
+[![Version](https://img.shields.io/badge/version-0.2-brightgreen)](https://github.com/nikodindon/hermes-lite/releases/tag/v0.2)
+**Stable MVP** – Multi-agent router utilisant uniquement des modèles gratuits OpenRouter.
+
 ## 🎯 Goal
 A lightweight CLI tool that routes a user query to several **free** OpenRouter models, compares their answers, and synthesises the best response.
 

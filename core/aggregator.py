@@ -1,33 +1,47 @@
 """Merge multiple model responses into a single final answer."""
 
 from typing import List, Dict, Any
+from agents.critic import Critic
+from agents.synthesizer import Synthesizer
+from utils.metrics import build_summary_entry
 
 class Aggregator:
-    """Combine and rank responses from multiple models."""
+    """Combine responses, score them, and synthesize a final answer."""
+
+    def __init__(self):
+        self.critic = Critic()
+        self.synthesizer = Synthesizer()
 
     def merge(self, responses: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Select the best response based on simple heuristics."""
+        """
+        Score all responses, then synthesize a final answer.
+        Keeps error responses for transparency in benchmarking.
+        """
         if not responses:
             return {"content": "No valid responses received."}
-        if len(responses) == 1:
-            return responses[0]
 
-        # Heuristic: choose response with median length to avoid extremes
-        lengths = [(r.get("choices", [{}])[0].get("message", {}).get("content", "")) for r in responses]
-        lengths = [len(text) for text in lengths if isinstance(text, str)]
-        if lengths:
-            median_idx = sorted(range(len(lengths)), key=lambda i: lengths[i])[len(lengths)//2]
-            return responses[median_idx]
-        else:
-            # Fallback to first response
-            return responses[0]
+        # Score each response
+        scores = []
+        valid_responses = []
+        for resp in responses:
+            details = self.critic.score_response(resp)
+            score = details.get("score", 0.0)
+            scores.append(score)
+            valid_responses.append(resp)
 
-    def format_comparison(self, responses: List[Dict[str, Any]]) -> str:
-        """Produce a simple comparison for benchmarking."""
-        lines = []
-        for i, resp in enumerate(responses):
-            model = resp.get("model", f"model_{i}")
-            content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-            latency = resp.get("usage", {}).get("total_time", 0)  # placeholder
-            lines.append(f"{model}: {len(content)} chars, ~{latency}s")
+        # Synthesize from valid responses
+        synthesis = self.synthesizer.synthesize(valid_responses, scores)
+
+        # Augment with a concise comparison summary for the user
+        summary_entries = [build_summary_entry(r, r.get("model", "unknown")) for r in valid_responses]
+        synthesis["comparison"] = summary_entries
+
+        return synthesis
+
+    def format_comparison(self, metrics_list: List[Dict[str, Any]]) -> str:
+        """Produce a simple comparison table string for CLI display."""
+        lines = ["Model                 Latency   Score   Tokens"]
+        lines.append("-------------------------------------------")
+        for m in metrics_list:
+            lines.append(f"{m['model'][:20]:20} {m['latency']:>8.2f} {m['score']:>6.1f} {m['tokens']:>6}")
         return "\n".join(lines)

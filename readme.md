@@ -76,21 +76,21 @@ python -m cli.main "Explain Kubernetes in simple terms" --bench
 1. **Analyst** – inspects the prompt and returns an `Intent` (simple, complex, code, …).
 2. **Router** – chooses one or more free models according to the intent.
 3. **Orchestrator** – fires concurrent HTTP calls to OpenRouter.
-4. **Critic** – gives each raw response a lightweight score (length, token count, etc.).
-5. **Aggregator** – picks the most “central” answer (median length heuristic).
-6. **Benchmark** – records latency, token count and the critic score for each model.
-7. **BenchmarkFormatter** – prints a Rich table and highlights the winner.
+4. **Critic** – gives each raw response a lightweight score (clarity, precision, hallucination).
+5. **Aggregator** – scores all responses and synthesises a final answer with justification.
+6. **Benchmark** – records latency, token count and critic scores for comparison.
+7. **BenchmarkFormatter** – prints a Rich table highlighting the winner.
 
 ## 📊 Benchmark example
 ```text
-┌───────────────────────────────┬─────────────┬───────┬───────┐
-│ Model                           │ Latency (s) │ Tokens│ Score │
-├───────────────────────────────┼─────────────┼───────┼───────┤
-│ meta-llama/llama-3-8b-instruct │ 1.21        │ 312   │ 0.9   │
-│ mistralai/mistral-7b-instruct  │ 0.95        │ 298   │ 0.8   │
-│ google/gemma-7b-it              │ 1.48        │ 340   │ 0.85  │
-└───────────────────────────────┴─────────────┴───────┴───────┘
-Winner: meta-llama/llama-3-8b-instruct with score 0.9
+┌───────────────────────────────┬─────────┬───────┬───────┐
+│ Model                           │ Latency │ Score │ Tokens│
+├───────────────────────────────┼─────────┼───────┼───────┤
+│ google/gemma-4-31b-it          │ 1.2s    │ 0.82  │ 320   │
+│ google/gemma-4-26b-a4b-it      │ 0.9s    │ 0.79  │ 280   │
+│ qwen/qwen3-coder               │ 1.5s    │ 0.91  │ 350   │
+└───────────────────────────────┴─────────┴───────┴───────┘
+Winner: qwen/qwen3-coder with score 0.91
 ```
 
 ## 🧪 Testing (future work)

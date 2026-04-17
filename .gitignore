@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+.venv
+venv/
+env/
+
+# Environment variables
+.env
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output / build
+dist/
+build/
+*.egg-info/
+
+# Data (keep memory.json as template if desired, but ignore local overrides)
+data/memory.json
+
+# Logs
+*.log
+
+# Coverage
+htmlcov/
+.pytest_cache/
+.coverage
+
+# Jupyter
+.ipynb_checkpoints

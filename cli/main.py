@@ -6,6 +6,7 @@ from typing import List
 
 from agents.analyst import Analyst
 from agents.critic import Critic
+from agents.synthesizer import Synthesizer
 from core.aggregator import Aggregator
 from core.router import Router
 from core.orchestrator import Orchestrator
@@ -18,15 +19,14 @@ logger = get_logger()
 
 async def main():
     console = Console()
-
+    
     # Initialize components
     analyst = Analyst()
     critic = Critic()
+    synthesizer = Synthesizer()
     router = Router()
-    orchestrator = Orchestrator()
+    orchestrator = Orchestrator()  # Not a context manager - just instantiate
     aggregator = Aggregator()
-    benchmark = Benchmark(critic)
-    formatter = BenchmarkFormatter()
 
     # Simple CLI loop
     console.print("[bold cyan]Hermes Lite v0.1[/bold cyan]")
@@ -40,7 +40,7 @@ async def main():
             if not prompt:
                 continue
 
-            logger.info(f"\\n=== Hermes Lite Query ===\\nPrompt: {prompt}")
+            logger.info(f"\n=== Hermes Lite Query ===\nPrompt: {prompt}")
 
             # 1. Analyze intent
             intent = analyst.analyze(prompt)
@@ -55,29 +55,37 @@ async def main():
             for model in selected_models:
                 benchmark.start_timer(model)
 
-            async with Orchestrator() as orchestrator:
-                responses = await orchestrator.run(selected_models, prompt)
+            responses = await orchestrator.run(selected_models, prompt)
 
             for model, response in zip(selected_models, responses):
                 benchmark.end_timer(model, response)
 
-            # 4. Merge responses
-            final_response = aggregator.merge(responses)
-            logger.info(f"\\n--- Merged Response ---\\n{final_response.get('content', 'No content')[:200]}...")
+            # 4. Merge responses (score + synthesize)
+            final_result = aggregator.merge(responses)
 
-            # 5. Show benchmark
+            # Display synthesis
+            synthesis = final_result
+            if synthesis.get("errors_present"):
+                console.print("[yellow]Note: Some models returned errors; see comparison below.[/yellow]")
+            console.print(f"\n[bold]Final answer:[/bold]\n{synthesis.get('content', '')}")
+            console.print(f"\n[dim]{synthesis.get('justification', '')}[/dim]")
+
+            # 5. Show benchmark comparison
             metrics = benchmark.get_metrics()
-            formatter.show_comparison(metrics)
+            formatter = BenchmarkFormatter()
+            console.print(formatter.format_comparison(metrics))
 
         except KeyboardInterrupt:
-            console.print("\\n[red]Interrupted. Type 'exit' to quit.[/red]")
+            console.print("\n[red]Interrupted. Type 'exit' to quit.[/red]")
             continue
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
-            console.print(f"\\n[red]Error: {str(e)}[/red]")
+            console.print(f"\n[red]Error: {str(e)}[/red]")
+
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        console.print("\\n[red]Goodbye![/red]")
+        console = Console()
+        console.print("\n[red]Goodbye![/red]")

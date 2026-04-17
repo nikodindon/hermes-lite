@@ -1,19 +1,19 @@
 """Coordinator for parallel model requests using asyncio."""
 
 import asyncio
-from typing import List, Dict
+from typing import List, Dict, Any
 from providers.openrouter import OpenRouterProvider
 from models.config import DEFAULT_COUNT, DEFAULT_TIMEOUT
 
 class Orchestrator:
     """Manage concurrent requests to multiple models."""
 
-    def __init__(self, model_provider: OpenRouterProvider = None):
-        self.provider = model_provider or OpenRouterProvider.create_provider()
-        self.semaphore = asyncio.Semaphore(DEFAULT_COUNT)  # Limit concurrent calls
+    def __init__(self):
+        self.provider = OpenRouterProvider()
+        self.semaphore = asyncio.Semaphore(DEFAULT_COUNT)
 
-    async def run(self, models: List[str], prompt: str) -> List[Dict[str, any]]:
-        """Execute parallel calls and return responses."""
+    async def run(self, models: List[str], prompt: str) -> List[Dict[str, Any]]:
+        """Execute parallel calls and return responses, including error responses for benchmarking."""
         async with self.semaphore:
             tasks = []
             for model in models:
@@ -21,14 +21,15 @@ class Orchestrator:
                     self.provider.call_model(
                         model=model,
                         prompt=prompt,
-                        max_tokens=512,  # Smaller for comparison
+                        max_tokens=DEFAULT_MAX_TOKENS,
                         timeout=DEFAULT_TIMEOUT
                     )
                 )
                 tasks.append(task)
-            
+
             responses = await asyncio.gather(*tasks, return_exceptions=True)
-            return [r for r in responses if not r.get("error")]
+            # Keep all responses (including errors) so benchmark can compare failure modes
+            return responses
 
 # Usage example
 # orch = Orchestrator()

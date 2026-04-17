@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from typing import Dict, Any, Optional
 import httpx
 from dotenv import load_dotenv
@@ -43,7 +44,14 @@ class OpenRouterProvider:
                     f"{OPENROUTER_BASE_URL}/chat/completions",
                     headers=self.headers,
                     json=payload,
+                    timeout=30.0
                 )
+                if response.status_code == 429:
+                    return {
+                        "error": True,
+                        "status_code": 429,
+                        "message": "[Rate limit] OpenRouter free est temporairement saturé. Réessaie dans 1-2 minutes.",
+                    }
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
@@ -51,7 +59,7 @@ class OpenRouterProvider:
                     "error": True,
                     "status_code": e.response.status_code,
                     "message": str(e),
-                    "response": e.response.text if e.response else None
+                    "response": e.response.text if e.response else None,
                 }
             except Exception as e:
                 return {

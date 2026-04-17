@@ -89,6 +89,10 @@ async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Or
         response_panel.footer = Markdown(f"*Justification:* {justification}")
     console.print(response_panel)
 
+    # Handle rate-limited / all-failed case
+    if bench and ("rate limit" in content.lower() or not responses):
+        console.print(f"\n[orange]Tous les modèles gratuits sont actuellement limités. Réessaie dans quelques minutes.[/orange]")
+
     if bench:
         metrics = benchmark.get_metrics()
         console.print(formatter.show_comparison(metrics))
@@ -144,6 +148,8 @@ async def main():
             if not prompt_input:
                 continue
             verbose = args.verbose or args.bench
+            # Small delay to be gentle with rate limits
+            await asyncio.sleep(0.4)
             await run_once(prompt_input, critic, router, orchestrator, aggregator, synthesizer, coder, memory,
                            bench=args.bench or args.verbose, verbose=verbose)
         except KeyboardInterrupt:

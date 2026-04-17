@@ -3,7 +3,7 @@
 import asyncio
 from typing import List, Dict, Any
 from providers.openrouter import OpenRouterProvider
-from models.config import DEFAULT_COUNT, DEFAULT_MAX_TOKENS
+from models.config import DEFAULT_COUNT, DEFAULT_TIMEOUT, DEFAULT_MAX_TOKENS
 
 class Orchestrator:
     """Manage concurrent requests to multiple models."""
@@ -16,19 +16,21 @@ class Orchestrator:
         """Execute parallel calls and return responses, including error responses for benchmarking."""
         # Limit models to DEFAULT_COUNT even if router returned more
         limited = models[:DEFAULT_COUNT]
-        async with self.semaphore:
-            tasks = []
-            for model in limited:
+        responses = []
+        for i, model in enumerate(limited):
+            async with self.semaphore:
                 task = asyncio.create_task(
                     self.provider.call_model(
                         model=model,
                         prompt=prompt,
                         max_tokens=DEFAULT_MAX_TOKENS,
+                        timeout=DEFAULT_TIMEOUT,
                     )
                 )
-                tasks.append(task)
-
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
+                responses.append(await task)
+            # Be gentle with rate limits between calls
+            if i < len(limited) - 1:
+                await asyncio.sleep(0.4)
             # Keep all responses (including errors) so benchmark can compare failure modes
             return responses
 

@@ -1,9 +1,13 @@
-"""Core router to choose which OpenRouter models to call based on intent."""
+""Core router to choose which OpenRouter models to call based on intent."""
 
+import logging
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 
 from models.config import FREE_MODELS, DEFAULT_COUNT
+from core.memory import Memory
+
+logger = logging.getLogger(__name__)
 
 # Simple intent types
 class IntentType(str):
@@ -18,21 +22,35 @@ class Intent:
     complexity: int  # 1-5 scale
 
 class Router:
-    """Select models for a given intent using the free model list."""
+    """Select models for a given intent, with memory-aware prioritization."""
 
     def __init__(self, models: List[str] | None = None, count: int | None = None):
         self.models = models or FREE_MODELS
         self.count = count or DEFAULT_COUNT
+        self.memory = Memory()
 
     def select(self, intent: Intent) -> List[str]:
         """Return a list of model identifiers to request.
 
-        For SIMPLE intents, use the first model. For COMPLEX, take the top `count` models.
+        Priority:
+        1) If a preferred model from memory is valid for the intent, put it first.
+        2) Then fill remaining slots with the free models list (up to count).
         """
-        if intent.type == IntentType.SIMPLE:
-            return [self.models[0]]
-        # For COMPLEX or unknown, use the configured number of models
-        return self.models[: min(self.count, len(self.models))]
+        preferred = self.memory.get_preferred_model(self.models)
+        selected = []
+        if preferred in self.models:
+            selected.append(preferred)
+            logger.debug(f"Router: preferred model from memory -> {preferred}")
+
+        # Fill remaining slots with other free models, avoiding duplicates
+        for model in self.models:
+            if len(selected) >= min(self.count, len(self.models)):
+                break
+            if model not in selected:
+                selected.append(model)
+
+        logger.info(f"Router: selected models={selected} for intent={intent.type}")
+        return selected
 
 # Simple heuristic to determine intent from prompt length
 

@@ -8,7 +8,10 @@
       "Bash(grep *)",
       "Bash(do *)",
       "Bash(done)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(python *)",
+      "Bash(timeout *)",
+      "Bash(dir *)"
     ]
   },
   "$version": 3

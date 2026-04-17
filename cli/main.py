@@ -8,10 +8,12 @@ from typing import List, Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich import box
 
 from agents.analyst import Analyst
 from agents.critic import Critic
 from agents.synthesizer import Synthesizer
+from agents.coder import Coder
 from agents.__init__ import *
 from core.aggregator import Aggregator
 from core.router import Router
@@ -25,30 +27,41 @@ from utils.metrics import build_summary_entry
 logger = get_logger()
 
 async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Orchestrator,
-                   aggregator: Aggregator, synthesizer: Synthesizer, memory: Memory,
-                   bench: bool) -> Optional[dict]:
+                   aggregator: Aggregator, synthesizer: Synthesizer, coder: Coder, memory: Memory,
+                   bench: bool, verbose: bool) -> Optional[dict]:
     """Run a single query and return the synthesis result (or None on error)."""
     console = Console()
 
     # 1) Analyze intent
     intent = Analyst().analyze(prompt)
+    if verbose:
+        logger.debug(f"Intent analysis: {intent}")
+
     # 2) Select models
     selected_models = router.select(intent)
-    # Limit models to DEFAULT_COUNT even if router returns more
-    from models.config import DEFAULT_COUNT
-    selected_models = selected_models[:DEFAULT_COUNT]
+    if verbose:
+        logger.debug(f"Selected models: {selected_models}")
+
+    # Optional: use dedicated coder agent for CODE intents
+    task_prompt = prompt
+    if intent.type == "code":
+        task_prompt = coder.generate(prompt, selected_models[0]).get("prompt", prompt)
+        if verbose:
+            logger.debug("Coder agent: generated code-focused prompt")
 
     # 3) Benchmark & execute
     benchmark = Benchmark(critic)
     for model in selected_models:
         benchmark.start_timer(model)
 
-    responses = await orchestrator.run(selected_models, prompt)
+    responses = await orchestrator.run(selected_models, task_prompt)
     for model, response in zip(selected_models, responses):
         benchmark.end_timer(model, response)
 
     # 4) Score & synthesize
     final_result = aggregator.merge(responses)
+    if verbose:
+        logger.debug(f"Merged result keys: {list(final_result.keys())}")
 
     # 5) Update memory on successful synthesis
     if not final_result.get("errors_present", True):
@@ -56,19 +69,24 @@ async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Or
                          final_result.get("score", 0.0))
         logger.info("[Mémoire mise à jour]")
 
-    # 6) Display
+    # 6) Display with Rich
+    content = final_result.get("content", "")
+    justification = final_result.get("justification", "")
+    # Show markdown for nice rendering
+    response_panel = Panel(
+        Markdown(f"**Réponse finale:**\n{content}"),
+        title="Hermes Lite",
+        border_style="cyan",
+        box=box.ROUNDED,
+    )
+    if justification:
+        response_panel.footer = Markdown(f"*Justification:* {justification}")
+    console.print(response_panel)
+
     if bench:
         metrics = benchmark.get_metrics()
         console.print(benchmark_formatter.format_comparison(metrics))
 
-    # Rich output panel
-    content = final_result.get("content", "")
-    justification = final_result.get("justification", "")
-    panel_body = f"[bold]Réponse finale:[/bold]\n{content}"
-    if justification:
-        panel_body += f"\n\n[dim]{justification}[/dim]"
-
-    console.print(Panel(panel_body, title="Hermes Lite", border_style="cyan"))
     return final_result
 
 
@@ -77,11 +95,14 @@ async def main():
     parser.add_argument("prompt", nargs="?", help="User query (one-shot mode)")
     parser.add_argument("--bench", action="store_true",
                         help="Show benchmark table for models")
+    parser.add_argument("--verbose", "-v", action="store_true",
+                        help="Enable debug/verbose logging")
     args = parser.parse_args()
 
     console = Console()
     critic = Critic()
     synthesizer = Synthesizer()
+    coder = Coder()
     router = Router()
     orchestrator = Orchestrator()
     aggregator = Aggregator()
@@ -97,7 +118,8 @@ async def main():
 
     # One-shot mode
     if args.prompt:
-        await run_once(args.prompt, critic, router, orchestrator, aggregator, synthesizer, memory, args.bench)
+        await run_once(args.prompt, critic, router, orchestrator, aggregator, synthesizer, coder, memory,
+                       bench=args.bench or args.verbose, verbose=args.verbose)
         return
 
     # Interactive loop
@@ -111,7 +133,9 @@ async def main():
                 break
             if not prompt_input:
                 continue
-            await run_once(prompt_input, critic, router, orchestrator, aggregator, synthesizer, memory, args.bench)
+            verbose = args.verbose or args.bench
+            await run_once(prompt_input, critic, router, orchestrator, aggregator, synthesizer, coder, memory,
+                           bench=args.bench or args.verbose, verbose=verbose)
         except KeyboardInterrupt:
             console.print("\n[red]Interrupted. Type 'exit' to quit.[/red]")
         except Exception as e:

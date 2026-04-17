@@ -43,7 +43,6 @@ class OpenRouterProvider:
                     f"{OPENROUTER_BASE_URL}/chat/completions",
                     headers=self.headers,
                     json=payload,
-                    timeout=30.0
                 )
                 response.raise_for_status()
                 return response.json()

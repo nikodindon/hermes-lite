@@ -32,6 +32,7 @@ async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Or
                    bench: bool, verbose: bool) -> Optional[dict]:
     """Run a single query and return the synthesis result (or None on error)."""
     console = Console()
+    formatter = BenchmarkFormatter()
 
     # 1) Analyze intent
     intent = Analyst().analyze(prompt)
@@ -90,7 +91,7 @@ async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Or
 
     if bench:
         metrics = benchmark.get_metrics()
-        console.print(benchmark_formatter.format_comparison(metrics))
+        console.print(formatter.show_comparison(metrics))
 
     return final_result
 
@@ -112,7 +113,6 @@ async def main():
     orchestrator = Orchestrator()
     aggregator = Aggregator()
     memory = Memory()
-    formatter = BenchmarkFormatter()
 
     # Show welcome message
     console.print("[bold cyan]Hermes Lite v0.2 – Multi-agent router (OpenRouter free)[/bold cyan]")

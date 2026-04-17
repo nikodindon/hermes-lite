@@ -3,7 +3,7 @@
 import asyncio
 from typing import List, Dict, Any
 from providers.openrouter import OpenRouterProvider
-from models.config import DEFAULT_COUNT, DEFAULT_TIMEOUT, DEFAULT_MAX_TOKENS
+from models.config import DEFAULT_COUNT, DEFAULT_MAX_TOKENS
 
 class Orchestrator:
     """Manage concurrent requests to multiple models."""
@@ -24,7 +24,6 @@ class Orchestrator:
                         model=model,
                         prompt=prompt,
                         max_tokens=DEFAULT_MAX_TOKENS,
-                        timeout=DEFAULT_TIMEOUT
                     )
                 )
                 tasks.append(task)

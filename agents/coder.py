@@ -1,4 +1,4 @@
-""Dedicated code generation agent for CODE intents."""
+"""Dedicated code generation agent for CODE intents."""
 
 from typing import List, Dict, Any
 
@@ -11,8 +11,7 @@ class Coder:
         self.critic = Critic()
 
     def generate(self, user_prompt: str, model: str) -> Dict[str, Any]:
-        """
-        Build a code-focused prompt and call the model.
+        """Build a code-focused prompt and call the model.
         Returns the raw OpenRouter response.
         """
         code_prompt = (

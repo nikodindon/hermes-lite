@@ -61,14 +61,29 @@ hermes-lite/
    ```
    The `.env` file is ignored by git via the default `.gitignore` that ships with the template.
 
+## 💾 Memory (optional)
+The project includes a simple persistent memory store. It is used automatically:
+- After each successful query, the prompt, selected model and score are stored in `data/memory.json`.
+- On startup, the preferred model is suggested based on past scores (`memory.get_preferred_model(...)`).
+- To disable, simply remove or rename `data/memory.json`.
+
 ## 🚀 Quick start
-Run the interactive REPL:
+### Install
+```bash
+pip install -r requirements.txt
+```
+### Commands
+**Interactive REPL**
 ```bash
 python -m cli.main
 ```
-Or make a one‑shot call:
+**One‑shot call**
 ```bash
 python -m cli.main "Explain Kubernetes in simple terms" --bench
+```
+**Benchmark only**
+```bash
+python -m cli.main --bench
 ```
 * `--bench` prints a colourful table with latency, token usage and a simple score for each model.
 

@@ -3,7 +3,7 @@
 import asyncio
 from typing import List, Dict, Any
 from providers.openrouter import OpenRouterProvider
-from models.config import DEFAULT_COUNT, DEFAULT_TIMEOUT
+from models.config import DEFAULT_COUNT, DEFAULT_TIMEOUT, DEFAULT_MAX_TOKENS
 
 class Orchestrator:
     """Manage concurrent requests to multiple models."""
@@ -14,9 +14,11 @@ class Orchestrator:
 
     async def run(self, models: List[str], prompt: str) -> List[Dict[str, Any]]:
         """Execute parallel calls and return responses, including error responses for benchmarking."""
+        # Limit models to DEFAULT_COUNT even if router returned more
+        limited = models[:DEFAULT_COUNT]
         async with self.semaphore:
             tasks = []
-            for model in models:
+            for model in limited:
                 task = asyncio.create_task(
                     self.provider.call_model(
                         model=model,

@@ -5,7 +5,10 @@
       "Bash(git add *)",
       "Bash(git *)",
       "Bash(find *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(do *)",
+      "Bash(done)",
+      "Bash(mkdir *)"
     ]
   },
   "$version": 3

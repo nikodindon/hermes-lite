@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import logging
 import sys
 from typing import List, Optional
 
@@ -49,14 +50,18 @@ async def run_once(prompt: str, critic: Critic, router: Router, orchestrator: Or
         if verbose:
             logger.debug("Coder agent: generated code-focused prompt")
 
-    # 3) Benchmark & execute
+    # 3) Benchmark & execute with error handling
     benchmark = Benchmark(critic)
     for model in selected_models:
         benchmark.start_timer(model)
 
-    responses = await orchestrator.run(selected_models, task_prompt)
-    for model, response in zip(selected_models, responses):
-        benchmark.end_timer(model, response)
+    try:
+        responses = await orchestrator.run(selected_models, task_prompt)
+        for model, response in zip(selected_models, responses):
+            benchmark.end_timer(model, response)
+    except Exception as e:
+        logger.error(f"Orchestrator error: {str(e)}")
+        responses = []
 
     # 4) Score & synthesize
     final_result = aggregator.merge(responses)
@@ -108,6 +113,11 @@ async def main():
     aggregator = Aggregator()
     memory = Memory()
     formatter = BenchmarkFormatter()
+
+    # Show welcome message
+    console.print("[bold cyan]Hermes Lite v0.2 – Multi-agent router (OpenRouter free)[/bold cyan]")
+    console.print("Commands: --bench | --verbose | type 'exit'")
+    console.print()
 
     # Show preferred model from memory (info only)
     try:
